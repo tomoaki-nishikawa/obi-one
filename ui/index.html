@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>obi-one</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <h1>obi-one</h1>
+          <p>マイソク帯替え バッチ処理</p>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="workbench">
+          <div id="dropzone" class="dropzone">
+            <div class="drop-icon">PDF</div>
+            <div>
+              <strong>物件PDFをここにドラッグ&ドロップ</strong>
+              <span>1ページPDFを複数まとめて追加できます</span>
+            </div>
+            <button id="pick-files" class="secondary">PDFを選択</button>
+          </div>
+
+          <div class="queue-header">
+            <h2>処理キュー</h2>
+            <div class="queue-actions">
+              <button id="process-all" class="primary">すべて処理</button>
+              <button id="retry-failed" class="secondary">失敗のみ再実行</button>
+              <button id="clear-done" class="secondary">完了をクリア</button>
+            </div>
+          </div>
+
+          <div id="queue" class="queue empty">
+            <div class="empty-state">PDFがまだ追加されていません</div>
+          </div>
+        </section>
+
+        <aside class="side">
+          <section class="panel">
+            <h2>出力</h2>
+            <label class="field">
+              <span>出力先フォルダ</span>
+              <div class="path-row">
+                <input id="output-dir" readonly placeholder="未選択" />
+                <button id="pick-output" class="secondary">選択</button>
+              </div>
+            </label>
+            <button id="open-output" class="secondary full">出力フォルダを開く</button>
+            <label class="check">
+              <input id="emit-pdf" type="checkbox" />
+              <span>PDFを出力</span>
+            </label>
+            <label class="check">
+              <input id="emit-jpeg" type="checkbox" />
+              <span>JPEGも出力</span>
+            </label>
+          </section>
+
+          <section class="panel">
+            <h2>帯カット</h2>
+            <label class="check">
+              <input id="strip-obi" type="checkbox" />
+              <span>他社の帯を除去</span>
+            </label>
+            <label class="field">
+              <span>帯の高さ <b id="cut-label">20%</b></span>
+              <input id="cut-ratio" type="range" min="5" max="40" step="1" />
+            </label>
+          </section>
+
+          <section id="settings-panel" class="panel settings-panel">
+            <h2>テンプレート</h2>
+            <div class="template-state">
+              <span id="template-mode">プリセット</span>
+              <small id="template-path"></small>
+            </div>
+            <button id="pick-template" class="secondary full">テンプレートPDFを選択</button>
+            <button id="reset-template" class="secondary full">プリセットに戻す</button>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

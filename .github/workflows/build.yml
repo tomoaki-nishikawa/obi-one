@@ -1,0 +1,67 @@
+name: Build obi-one
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: macOS
+            os: macos-14
+            artifact: obi-one-macos
+            build_command: npm run build -- --bundles app
+            bundle_path: src-tauri/target/release/bundle/macos/**/*.app
+          - name: Windows
+            os: windows-latest
+            artifact: obi-one-windows
+            build_command: npm run build -- --bundles nsis,msi
+            bundle_path: |
+              src-tauri/target/release/bundle/nsis/**/*-setup.exe
+              src-tauri/target/release/bundle/msi/**/*.msi
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Fetch PDFium
+        shell: bash
+        run: ./scripts/fetch-pdfium.sh current
+
+      - name: Test Rust core
+        working-directory: src-tauri
+        run: cargo test --lib --bins
+
+      - name: Build Tauri app
+        run: ${{ matrix.platform.build_command }}
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.artifact }}
+          path: ${{ matrix.platform.bundle_path }}
+          if-no-files-found: error
