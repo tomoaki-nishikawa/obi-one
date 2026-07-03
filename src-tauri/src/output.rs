@@ -117,8 +117,8 @@ mod tests {
 
     #[test]
     fn prefixes_and_sanitizes_stem() {
-        let path = Path::new("/tmp/a:b?c.pdf");
-        assert_eq!(prefixed_stem(path).unwrap(), "い）a_b_c");
+        assert_eq!(prefixed_stem(Path::new("物件A.pdf")).unwrap(), "い）物件A");
+        assert_eq!(sanitize_file_stem("a:b?c"), "a_b_c");
     }
 
     #[test]
