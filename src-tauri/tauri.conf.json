@@ -28,6 +28,9 @@
       "resources/maisoku_template.pdf",
       "resources/pdfium/*"
     ],
-    "icon": []
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
   }
 }
