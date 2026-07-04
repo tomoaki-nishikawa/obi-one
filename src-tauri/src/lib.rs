@@ -5,8 +5,8 @@ mod processor;
 mod settings;
 
 use commands::{
-    choose_input_pdfs, choose_output_dir, choose_template_pdf, load_settings, open_path,
-    process_one, reset_template, save_settings,
+    choose_input_pdfs, choose_obi_band_image, choose_output_dir, load_settings, open_path,
+    process_one, reset_obi_band, save_settings,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,8 +18,8 @@ pub fn run() {
             save_settings,
             choose_input_pdfs,
             choose_output_dir,
-            choose_template_pdf,
-            reset_template,
+            choose_obi_band_image,
+            reset_obi_band,
             process_one,
             open_path,
         ])

@@ -63,23 +63,19 @@
 
           <section class="panel">
             <h2>帯カット</h2>
-            <label class="check">
-              <input id="strip-obi" type="checkbox" />
-              <span>他社の帯を除去</span>
-            </label>
             <label class="field">
-              <span>帯の高さ <b id="cut-label">20%</b></span>
+              <span>帯の高さ：チラシ下部の <b id="cut-label">20%</b></span>
               <input id="cut-ratio" type="range" min="5" max="40" step="1" />
             </label>
           </section>
 
           <section id="settings-panel" class="panel settings-panel">
-            <h2>テンプレート</h2>
+            <h2>帯画像</h2>
             <div class="template-state">
               <span id="template-mode">プリセット</span>
               <small id="template-path"></small>
             </div>
-            <button id="pick-template" class="secondary full">テンプレートPDFを選択</button>
+            <button id="pick-template" class="secondary full">帯画像を選択</button>
             <button id="reset-template" class="secondary full">プリセットに戻す</button>
           </section>
         </aside>

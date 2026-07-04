@@ -11,12 +11,15 @@ use tauri_plugin_dialog::DialogExt;
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
     let config_dir = app.path().app_config_dir().map_err(to_string)?;
-    settings::load(&config_dir).map_err(to_string)
+    let mut settings = settings::load(&config_dir).map_err(to_string)?;
+    settings.strip_obi = true;
+    Ok(settings)
 }
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
     settings.obi_cut_ratio = clamp_cut_ratio(settings.obi_cut_ratio);
+    settings.strip_obi = true;
     let config_dir = app.path().app_config_dir().map_err(to_string)?;
     settings::save(&config_dir, &settings).map_err(to_string)?;
     Ok(settings)
@@ -61,13 +64,13 @@ pub async fn choose_output_dir(app: AppHandle) -> Result<Option<String>, String>
 }
 
 #[tauri::command]
-pub async fn choose_template_pdf(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
+pub async fn choose_obi_band_image(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
     let (tx, rx) = mpsc::channel();
     app
         .dialog()
         .file()
-        .set_title("テンプレートPDFを選択")
-        .add_filter("PDF", &["pdf"])
+        .set_title("帯画像を選択")
+        .add_filter("画像", &["jpg", "jpeg", "png"])
         .pick_file(move |path| {
             let _ = tx.send(path);
         });
@@ -86,7 +89,7 @@ pub async fn choose_template_pdf(app: AppHandle, mut settings: AppSettings) -> R
 }
 
 #[tauri::command]
-pub fn reset_template(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
+pub fn reset_obi_band(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
     settings.template_mode = TemplateMode::Bundled;
     settings.custom_template_path = None;
     save_settings(app, settings.clone())?;

@@ -44,7 +44,7 @@ pub fn process_pdf(app: &AppHandle, request: ProcessRequest) -> Result<ProcessRe
         return Err(anyhow!("PDFまたはJPEGのどちらかは出力してください。"));
     }
 
-    let template_path = resolve_template_path(app, &request.settings)?;
+    let template_path = resolve_template_path(app)?;
     let plan = plan_output_paths(
         &output_root,
         &input_path,
@@ -59,15 +59,18 @@ pub fn process_pdf(app: &AppHandle, request: ProcessRequest) -> Result<ProcessRe
 
     let template_img = render_pdf_first_page(&pdfium, &template_path)
         .with_context(|| format!("テンプレートPDFを開けませんでした: {}", template_path.display()))?;
+    let obi_band_path = resolve_obi_band_path(app, &request.settings)?;
+    let obi_band_img = image::open(&obi_band_path)
+        .with_context(|| format!("帯画像を開けませんでした: {}", obi_band_path.display()))?;
     let property_img = render_single_page_property_pdf(&pdfium, &input_path)
         .with_context(|| format!("物件PDFを開けませんでした: {}", input_path.display()))?;
 
     let options = CompositeOptions {
-        strip_obi: request.settings.strip_obi,
+        strip_obi: true,
         obi_cut_ratio: request.settings.obi_cut_ratio,
         ..CompositeOptions::default()
     };
-    let (composited, info) = composite_into_template(&template_img, &property_img, options)
+    let (composited, info) = composite_into_template(&template_img, &property_img, Some(&obi_band_img), options)
         .map_err(|e| anyhow!(e.to_string()))?;
 
     if let Some(path) = &plan.jpeg_path {
@@ -86,6 +89,44 @@ pub fn process_pdf(app: &AppHandle, request: ProcessRequest) -> Result<ProcessRe
     })
 }
 
+fn resolve_obi_band_path(app: &AppHandle, settings: &AppSettings) -> Result<PathBuf> {
+    if settings.template_mode == TemplateMode::Custom {
+        let path = settings
+            .custom_template_path
+            .as_ref()
+            .map(PathBuf::from)
+            .ok_or_else(|| anyhow!("カスタム帯画像が未指定です。"))?;
+        if path.exists() {
+            return Ok(path);
+        }
+        return Err(anyhow!("カスタム帯画像が見つかりません: {}", path.display()));
+    }
+
+    let mut candidates = Vec::new();
+    if let Ok(path) = app.path().resolve("maisoku_obi_band.jpg", BaseDirectory::Resource) {
+        candidates.push(path);
+    }
+    if let Ok(path) = app.path().resolve("resources/maisoku_obi_band.jpg", BaseDirectory::Resource) {
+        candidates.push(path);
+    }
+    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("maisoku_obi_band.jpg"));
+
+    candidates
+        .iter()
+        .find(|path| path.exists())
+        .cloned()
+        .ok_or_else(|| {
+            anyhow!(
+                "帯画像が見つかりませんでした。探索先:\n{}",
+                candidates
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        })
+}
+
 fn validate_input_pdf(path: &Path) -> Result<()> {
     if !path.exists() {
         return Err(anyhow!("入力PDFが見つかりません: {}", path.display()));
@@ -96,46 +137,30 @@ fn validate_input_pdf(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn resolve_template_path(app: &AppHandle, settings: &AppSettings) -> Result<PathBuf> {
-    match settings.template_mode {
-        TemplateMode::Custom => {
-            let path = settings
-                .custom_template_path
-                .as_ref()
-                .map(PathBuf::from)
-                .ok_or_else(|| anyhow!("カスタムテンプレートPDFが未指定です。"))?;
-            if path.exists() {
-                Ok(path)
-            } else {
-                Err(anyhow!("カスタムテンプレートPDFが見つかりません: {}", path.display()))
-            }
-        }
-        TemplateMode::Bundled => {
-            let mut candidates = Vec::new();
-            if let Ok(path) = app.path().resolve("maisoku_template.pdf", BaseDirectory::Resource) {
-                candidates.push(path);
-            }
-            if let Ok(path) = app.path().resolve("resources/maisoku_template.pdf", BaseDirectory::Resource) {
-                candidates.push(path);
-            }
-            candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("maisoku_template.pdf"));
-
-            candidates
-                .iter()
-                .find(|path| path.exists())
-                .cloned()
-                .ok_or_else(|| {
-                    anyhow!(
-                        "プリセットPDFが見つかりませんでした。探索先:\n{}",
-                        candidates
-                            .iter()
-                            .map(|path| path.display().to_string())
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    )
-                })
-        }
+fn resolve_template_path(app: &AppHandle) -> Result<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(path) = app.path().resolve("maisoku_template.pdf", BaseDirectory::Resource) {
+        candidates.push(path);
     }
+    if let Ok(path) = app.path().resolve("resources/maisoku_template.pdf", BaseDirectory::Resource) {
+        candidates.push(path);
+    }
+    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("maisoku_template.pdf"));
+
+    candidates
+        .iter()
+        .find(|path| path.exists())
+        .cloned()
+        .ok_or_else(|| {
+            anyhow!(
+                "プリセットPDFが見つかりませんでした。探索先:\n{}",
+                candidates
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        })
 }
 
 fn pdfium(app: &AppHandle) -> Result<Pdfium> {

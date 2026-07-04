@@ -20,7 +20,6 @@ const els = {
   openOutput: document.querySelector("#open-output"),
   emitPdf: document.querySelector("#emit-pdf"),
   emitJpeg: document.querySelector("#emit-jpeg"),
-  stripObi: document.querySelector("#strip-obi"),
   cutRatio: document.querySelector("#cut-ratio"),
   cutLabel: document.querySelector("#cut-label"),
   templateMode: document.querySelector("#template-mode"),
@@ -159,11 +158,11 @@ function renderSettings() {
   els.outputDir.value = settings.output_dir || "";
   els.emitPdf.checked = settings.emit_pdf;
   els.emitJpeg.checked = settings.emit_jpeg;
-  els.stripObi.checked = settings.strip_obi;
+  settings.strip_obi = true;
   els.cutRatio.value = Math.round(settings.obi_cut_ratio * 100);
   els.cutLabel.textContent = `${els.cutRatio.value}%`;
   els.templateMode.textContent =
-    settings.template_mode === "custom" ? "カスタムテンプレート" : "プリセット";
+    settings.template_mode === "custom" ? "カスタム帯画像" : "プリセット帯画像";
   els.templatePath.textContent = settings.custom_template_path || "";
   updateButtons();
 }
@@ -280,10 +279,6 @@ async function init() {
     state.settings.emit_jpeg = els.emitJpeg.checked;
     await persistSettings();
   });
-  els.stripObi.addEventListener("change", async () => {
-    state.settings.strip_obi = els.stripObi.checked;
-    await persistSettings();
-  });
   els.cutRatio.addEventListener("input", () => {
     els.cutLabel.textContent = `${els.cutRatio.value}%`;
   });
@@ -292,11 +287,11 @@ async function init() {
     await persistSettings();
   });
   els.pickTemplate.addEventListener("click", async () => {
-    state.settings = await invoke("choose_template_pdf", { settings: state.settings });
+    state.settings = await invoke("choose_obi_band_image", { settings: state.settings });
     renderSettings();
   });
   els.resetTemplate.addEventListener("click", async () => {
-    state.settings = await invoke("reset_template", { settings: state.settings });
+    state.settings = await invoke("reset_obi_band", { settings: state.settings });
     renderSettings();
   });
 }

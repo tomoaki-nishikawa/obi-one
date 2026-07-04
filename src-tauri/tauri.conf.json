@@ -26,6 +26,7 @@
     "targets": "all",
     "resources": [
       "resources/maisoku_template.pdf",
+      "resources/maisoku_obi_band.jpg",
       "resources/pdfium/*"
     ],
     "icon": [
