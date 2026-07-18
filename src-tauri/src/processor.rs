@@ -73,12 +73,12 @@ pub fn process_pdf(app: &AppHandle, request: ProcessRequest) -> Result<ProcessRe
     let (composited, info) = composite_into_template(&template_img, &property_img, Some(&obi_band_img), options)
         .map_err(|e| anyhow!(e.to_string()))?;
 
-    if let Some(path) = &plan.jpeg_path {
-        save_jpeg(&composited, path)?;
-    }
-    if let Some(path) = &plan.pdf_path {
-        save_image_as_pdf(&composited, path)?;
-    }
+    save_processed_outputs(
+        &property_img,
+        &composited,
+        plan.jpeg_path.as_deref(),
+        plan.pdf_path.as_deref(),
+    )?;
 
     Ok(ProcessResult {
         input_path: request.input_path,
@@ -253,6 +253,21 @@ fn save_jpeg(img: &DynamicImage, path: &Path) -> Result<()> {
         .with_context(|| format!("JPEGを保存できませんでした: {}", path.display()))
 }
 
+fn save_processed_outputs(
+    original_property: &DynamicImage,
+    composited: &DynamicImage,
+    jpeg_path: Option<&Path>,
+    pdf_path: Option<&Path>,
+) -> Result<()> {
+    if let Some(path) = jpeg_path {
+        save_jpeg(original_property, path)?;
+    }
+    if let Some(path) = pdf_path {
+        save_image_as_pdf(composited, path)?;
+    }
+    Ok(())
+}
+
 fn save_image_as_pdf(img: &DynamicImage, path: &Path) -> Result<()> {
     let (width, height) = img.dimensions();
     let width_mm = pixels_to_mm(width);
@@ -350,6 +365,25 @@ mod tests {
 
         let rendered_pdf = render_pdf_first_page(&pdfium, &pdf_path).expect("saved pdf should render");
         assert!(non_white_pixel_count(&rendered_pdf) > 1000, "saved pdf should not be blank");
+    }
+
+    #[test]
+    fn jpeg_output_uses_original_property_before_compositing() {
+        let out_dir = tempfile::tempdir().unwrap();
+        let jpeg_path = out_dir.path().join("original.jpg");
+        let original = DynamicImage::new_rgb8(8, 8);
+        let composited = DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
+            8,
+            8,
+            image::Rgb([255, 255, 255]),
+        ));
+
+        save_processed_outputs(&original, &composited, Some(&jpeg_path), None)
+            .expect("jpeg should save");
+
+        let saved = image::open(jpeg_path).expect("saved jpeg should open").to_rgb8();
+        let pixel = saved.get_pixel(0, 0);
+        assert!(pixel[0] < 10 && pixel[1] < 10 && pixel[2] < 10);
     }
 
     fn non_white_pixel_count(image: &DynamicImage) -> usize {

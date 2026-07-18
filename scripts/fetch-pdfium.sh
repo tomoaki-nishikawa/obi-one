@@ -27,8 +27,9 @@ resolve_current_target() {
   esac
 }
 
-download_target() {
+download_target_to() {
   local target="$1"
+  local destination="$2"
   local asset lib_name
 
   case "$target" in
@@ -49,7 +50,7 @@ download_target() {
       lib_name="libpdfium.so"
       ;;
     *)
-      echo "Usage: $0 [current|mac-arm64|mac-x64|windows-x64|linux-x64|all]" >&2
+      echo "Usage: $0 [current|mac-arm64|mac-x64|mac-universal|windows-x64|linux-x64|all]" >&2
       exit 1
       ;;
   esac
@@ -69,16 +70,53 @@ download_target() {
     exit 1
   fi
 
-  cp "$found" "$OUT_DIR/$lib_name"
-  echo "Installed $OUT_DIR/$lib_name"
+  cp "$found" "$destination"
+  echo "Installed $destination"
+}
+
+download_target() {
+  local target="$1"
+  local lib_name
+
+  case "$target" in
+    mac-arm64|mac-x64) lib_name="libpdfium.dylib" ;;
+    windows-x64) lib_name="pdfium.dll" ;;
+    linux-x64) lib_name="libpdfium.so" ;;
+    *)
+      echo "Usage: $0 [current|mac-arm64|mac-x64|mac-universal|windows-x64|linux-x64|all]" >&2
+      exit 1
+      ;;
+  esac
+
+  download_target_to "$target" "$OUT_DIR/$lib_name"
+}
+
+download_universal_macos() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "mac-universal requires macOS and the lipo command." >&2
+    exit 1
+  fi
+
+  local arm64_lib="$TMP_DIR/libpdfium-arm64.dylib"
+  local x64_lib="$TMP_DIR/libpdfium-x64.dylib"
+  local universal_lib="$OUT_DIR/libpdfium.dylib"
+
+  download_target_to "mac-arm64" "$arm64_lib"
+  download_target_to "mac-x64" "$x64_lib"
+  lipo -create "$arm64_lib" "$x64_lib" -output "$universal_lib"
+  lipo -info "$universal_lib"
+  echo "Installed universal $universal_lib"
 }
 
 case "$TARGET" in
   current)
     download_target "$(resolve_current_target)"
     ;;
+  mac-universal)
+    download_universal_macos
+    ;;
   all)
-    download_target "mac-arm64"
+    download_universal_macos
     download_target "windows-x64"
     ;;
   *)

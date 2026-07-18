@@ -16,12 +16,16 @@ jobs:
         platform:
           - name: macOS
             os: macos-14
-            artifact: obi-one-macos
-            build_command: npm run build -- --bundles app
-            bundle_path: src-tauri/target/release/bundle/macos/**/*.app
+            artifact: obi-one-macos-universal
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            pdfium_target: mac-universal
+            build_command: npm run build -- --target universal-apple-darwin --bundles app --no-sign
+            bundle_path: dist/macos/*
           - name: Windows
             os: windows-latest
             artifact: obi-one-windows
+            rust_targets: x86_64-pc-windows-msvc
+            pdfium_target: windows-x64
             build_command: npm run build -- --bundles nsis,msi
             bundle_path: |
               src-tauri/target/release/bundle/nsis/**/*-setup.exe
@@ -39,6 +43,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.rust_targets }}
 
       - name: Cache Rust artifacts
         uses: swatinem/rust-cache@v2
@@ -50,7 +56,7 @@ jobs:
 
       - name: Fetch PDFium
         shell: bash
-        run: ./scripts/fetch-pdfium.sh current
+        run: ./scripts/fetch-pdfium.sh ${{ matrix.platform.pdfium_target }}
 
       - name: Test Rust core
         working-directory: src-tauri
@@ -58,6 +64,11 @@ jobs:
 
       - name: Build Tauri app
         run: ${{ matrix.platform.build_command }}
+
+      - name: Sign, verify, and package universal macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./scripts/package-macos.sh
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4

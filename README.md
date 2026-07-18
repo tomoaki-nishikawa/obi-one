@@ -8,10 +8,10 @@ Rust + Tauri implementation of the maisoku obi replacement tool.
 - Multiple PDF queue UI
 - Output directory setting
 - Automatic `yyyymmdd` output folder planning
-- PDF / JPEG output options
+- Processed PDF / original-flyer JPEG output options
 - Preset template PDF
 - Bundled PDFium dynamic library
-- Custom template PDF setting
+- Custom obi band image setting
 - Rust image composition core
 - Unit tests for output naming, settings, image composition, PDFium rendering, and PDF/JPEG saving
 
@@ -41,7 +41,7 @@ Install the current platform's dynamic PDFium library with:
 ./scripts/fetch-pdfium.sh
 ```
 
-Install both macOS arm64 and Windows x64 PDFium libraries with:
+Install universal macOS (arm64 + x86_64) and Windows x64 PDFium libraries with:
 
 ```sh
 ./scripts/fetch-pdfium.sh all
@@ -60,6 +60,8 @@ The bundled binaries are downloaded from the `bblanchon/pdfium-binaries` GitHub 
 
 macOS builds can be created on macOS.
 
+The release macOS artifact is a universal app for both Apple Silicon and Intel Macs. Its bundled `libpdfium.dylib` is also universal. The workflow applies an ad-hoc signature to the app executable and PDFium, then produces a DMG and a ZIP that preserves executable permissions. Because it is not signed with an Apple Developer ID or notarized, users must allow the first launch in macOS Privacy & Security settings.
+
 Windows standalone builds should be created on Windows, either on a Windows PC or a Windows CI runner such as GitHub Actions. This is the recommended path for this project because Tauri officially supports the Windows MSVC target, and GitHub's `windows-latest` runner already has the Windows toolchain needed by the Tauri bundler.
 
 This repository can carry both PDFium dynamic libraries under `src-tauri/resources/pdfium/`. The Windows build must include `src-tauri/resources/pdfium/pdfium.dll`; the macOS build must include `src-tauri/resources/pdfium/libpdfium.dylib`.
@@ -72,16 +74,22 @@ npm ci
 npm run build
 ```
 
-macOS `.app` only build:
+macOS universal release build:
 
 ```sh
-npm run build -- --bundles app
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+./scripts/fetch-pdfium.sh mac-universal
+npm run build -- --target universal-apple-darwin --bundles app --no-sign
+./scripts/package-macos.sh
 ```
+
+The macOS release files are written to `dist/macos/`.
 
 Cross-platform release build:
 
 - Push the project to GitHub.
 - Open GitHub Actions and run `Build obi-one` manually, or push to `main`.
+- Download `obi-one-macos-universal` for the universal DMG/ZIP and installation notes.
 - Download `obi-one-windows` from the workflow artifacts.
 - The Windows artifact contains the NSIS setup executable and MSI installer from:
   - `src-tauri/target/release/bundle/nsis/**/*-setup.exe`
